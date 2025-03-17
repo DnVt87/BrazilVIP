@@ -162,6 +162,7 @@
           const [selectedDestinations, setSelectedDestinations] = React.useState([]);
           const [qualityFilter, setQualityFilter] = React.useState("All");
           const [searchTerm, setSearchTerm] = React.useState("");
+          const [hideNonQualityMonths, setHideNonQualityMonths] = React.useState(false);
 
           // Function to toggle month selection
           const toggleMonth = (monthIndex) => {
@@ -199,14 +200,24 @@
               return false;
             }
             
-            // If no months are selected, only apply destination filter
-            if (selectedMonths.length === 0) return true;
+            // If no months are selected and no quality months to show, only apply destination filter
+            if (selectedMonths.length === 0 && !(selectedDestinations.length > 0 && qualityFilter !== "All" && hideNonQualityMonths)) {
+              return true;
+            }
             
             // Convert quality filter to numeric value
             const qualityValue = getQualityValue(qualityFilter);
             
+            // Get months to check against - either selected months or quality months when hideNonQualityMonths is true
+            const monthsToCheck = (selectedDestinations.length > 0 && qualityFilter !== "All" && hideNonQualityMonths) 
+              ? (selectedMonths.length > 0 ? selectedMonths.filter(m => qualityMonths.includes(m)) : qualityMonths)
+              : selectedMonths;
+            
+            // If filtering by months but no valid months after intersection with quality months, return false
+            if (monthsToCheck.length === 0) return false;
+            
             // Check if the destination has at least one selected month with quality equal to or better than the filter
-            return selectedMonths.some(monthIndex => {
+            return monthsToCheck.some(monthIndex => {
               const value = seasonData[destinationName][monthIndex];
               return value <= qualityValue;
             });
@@ -350,6 +361,19 @@
                           </span>
                         )}
                       </p>
+                      
+                      <div className="mt-2 flex items-center">
+                        <input 
+                          type="checkbox" 
+                          id="hide-non-quality-months" 
+                          checked={hideNonQualityMonths} 
+                          onChange={() => setHideNonQualityMonths(!hideNonQualityMonths)}
+                          className="mr-2"
+                        />
+                        <label htmlFor="hide-non-quality-months" className="text-xs cursor-pointer">
+                          Only show these months in the table
+                        </label>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -359,14 +383,15 @@
                     <p>
                       Showing {filteredDestinations.length} destinations 
                       {selectedDestinations.length > 0 && ` (${selectedDestinations.length} selected)`}
-                      {selectedMonths.length > 0 && ` during ${selectedMonths.map(idx => months[idx]).join(", ")}`}
-                      {selectedMonths.length > 0 && ` that are rated ${qualityFilter !== "All" ? qualityFilter + " or better" : "any quality"}`}.
+                      {selectedMonths.length > 0 && !hideNonQualityMonths && ` during ${selectedMonths.map(idx => months[idx]).join(", ")}`}
+                      {(selectedMonths.length > 0 || (hideNonQualityMonths && qualityMonths.length > 0)) && 
+                        ` that are rated ${qualityFilter !== "All" ? qualityFilter + " or better" : "any quality"}`}.
                     </p>
                   ) : (
                     <p>Select destinations and/or months to filter. Currently showing all destinations.</p>
                   )}
                   
-                  {qualityMonths.length > 0 && selectedDestinations.length > 0 && (
+                  {qualityMonths.length > 0 && selectedDestinations.length > 0 && !hideNonQualityMonths && (
                     <p className="mt-1 text-green-700">
                       <span className="text-xs">★</span> Months with green highlight are when all selected destinations have at least "{qualityFilter}" rating.
                     </p>
@@ -384,31 +409,38 @@
                           ({filteredDestinations.length}/{destinations.length})
                         </span>
                       </th>
-                      {months.map((month, idx) => (
-                        <th 
-                          key={month} 
-                          className={`px-4 py-2 border text-center cursor-pointer ${
-                            selectedMonths.includes(idx) ? 'bg-blue-100 month-selected' : ''
-                          } ${
-                            qualityMonths.includes(idx) && selectedDestinations.length > 0 ? 'bg-green-100' : ''
-                          }`}
-                          style={{ 
-                            minWidth: '60px',
-                            position: 'relative'
-                          }}
-                          onClick={() => toggleMonth(idx)}
-                        >
-                          {month}
-                          {qualityMonths.includes(idx) && selectedDestinations.length > 0 && (
-                            <span 
-                              className="absolute top-0 right-0 text-xs text-green-700"
-                              style={{ fontSize: '8px' }}
-                            >
-                              ★
-                            </span>
-                          )}
-                        </th>
-                      ))}
+                      {months.map((month, idx) => {
+                        // Skip months that don't meet quality criteria when hideNonQualityMonths is true
+                        if (selectedDestinations.length > 0 && qualityFilter !== "All" && hideNonQualityMonths && !qualityMonths.includes(idx)) {
+                          return null;
+                        }
+                        
+                        return (
+                          <th 
+                            key={month} 
+                            className={`px-4 py-2 border text-center cursor-pointer ${
+                              selectedMonths.includes(idx) ? 'bg-blue-100 month-selected' : ''
+                            } ${
+                              qualityMonths.includes(idx) && selectedDestinations.length > 0 ? 'bg-green-100' : ''
+                            }`}
+                            style={{ 
+                              minWidth: '60px',
+                              position: 'relative'
+                            }}
+                            onClick={() => toggleMonth(idx)}
+                          >
+                            {month}
+                            {qualityMonths.includes(idx) && selectedDestinations.length > 0 && !hideNonQualityMonths && (
+                              <span 
+                                className="absolute top-0 right-0 text-xs text-green-700"
+                                style={{ fontSize: '8px' }}
+                              >
+                                ★
+                              </span>
+                            )}
+                          </th>
+                        );
+                      })}
                     </tr>
                   </thead>
                   <tbody>
@@ -428,6 +460,11 @@
                           </div>
                         </td>
                         {months.map((month, monthIndex) => {
+                          // Skip months that don't meet quality criteria when hideNonQualityMonths is true
+                          if (selectedDestinations.length > 0 && qualityFilter !== "All" && hideNonQualityMonths && !qualityMonths.includes(monthIndex)) {
+                            return null;
+                          }
+                          
                           const seasonValue = seasonData[destination.name][monthIndex];
                           return (
                             <td 
