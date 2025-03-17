@@ -339,15 +339,15 @@
                     <div className="mt-2 p-2 bg-blue-50 rounded">
                       <p className="text-xs font-medium">
                         {qualityMonths.length > 0 ? (
-                          <>
+                          <span>
                             <span className="text-green-700">✓</span> All {selectedDestinations.length} selected destinations are rated at least "{qualityFilter}" during:
                             <br/>
                             <span className="font-bold">{qualityMonths.map(idx => months[idx]).join(", ")}</span>
-                          </>
+                          </span>
                         ) : (
-                          <>
+                          <span>
                             <span className="text-red-700">✗</span> There are no months when all selected destinations are rated "{qualityFilter}" or better together.
-                          </>
+                          </span>
                         )}
                       </p>
                     </div>
