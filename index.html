@@ -64,7 +64,7 @@
         
         /* Destination filter dropdown */
         .destination-filter {
-            max-height: 200px;
+            max-height: 100px;
             overflow-y: auto;
             border: 1px solid #e5e7eb;
             border-radius: 0.375rem;
@@ -215,6 +215,32 @@
           // Filter destinations based on selected criteria
           const filteredDestinations = destinations.filter(dest => meetsCriteria(dest.name));
           
+          // Function to find the months where all selected destinations meet the quality criteria
+          const findQualityMonths = () => {
+            // If no destinations are selected, return all months
+            if (selectedDestinations.length === 0) return [];
+            
+            const qualityValue = getQualityValue(qualityFilter);
+            const commonQualityMonths = [];
+            
+            // For each month, check if all selected destinations meet the quality criteria
+            for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
+              const allDestinationsMeetQuality = selectedDestinations.every(destName => {
+                const value = seasonData[destName][monthIndex];
+                return value <= qualityValue;
+              });
+              
+              if (allDestinationsMeetQuality) {
+                commonQualityMonths.push(monthIndex);
+              }
+            }
+            
+            return commonQualityMonths;
+          };
+          
+          // Get months where all selected destinations meet the quality criteria
+          const qualityMonths = findQualityMonths();
+          
           // Filter destinations for the selector based on search term
           const filteredDestinationOptions = destinations
             .filter(dest => dest.name.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -308,6 +334,24 @@
                       </button>
                     ))}
                   </div>
+                  
+                  {selectedDestinations.length > 0 && qualityFilter !== "All" && (
+                    <div className="mt-2 p-2 bg-blue-50 rounded">
+                      <p className="text-xs font-medium">
+                        {qualityMonths.length > 0 ? (
+                          <>
+                            <span className="text-green-700">✓</span> All {selectedDestinations.length} selected destinations are rated at least "{qualityFilter}" during:
+                            <br/>
+                            <span className="font-bold">{qualityMonths.map(idx => months[idx]).join(", ")}</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-red-700">✗</span> There are no months when all selected destinations are rated "{qualityFilter}" or better together.
+                          </>
+                        )}
+                      </p>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="mt-2 text-xs">
@@ -320,6 +364,12 @@
                     </p>
                   ) : (
                     <p>Select destinations and/or months to filter. Currently showing all destinations.</p>
+                  )}
+                  
+                  {qualityMonths.length > 0 && selectedDestinations.length > 0 && (
+                    <p className="mt-1 text-green-700">
+                      <span className="text-xs">★</span> Months with green highlight are when all selected destinations have at least "{qualityFilter}" rating.
+                    </p>
                   )}
                 </div>
               </div>
@@ -339,11 +389,24 @@
                           key={month} 
                           className={`px-4 py-2 border text-center cursor-pointer ${
                             selectedMonths.includes(idx) ? 'bg-blue-100 month-selected' : ''
+                          } ${
+                            qualityMonths.includes(idx) && selectedDestinations.length > 0 ? 'bg-green-100' : ''
                           }`}
-                          style={{ minWidth: '60px' }}
+                          style={{ 
+                            minWidth: '60px',
+                            position: 'relative'
+                          }}
                           onClick={() => toggleMonth(idx)}
                         >
                           {month}
+                          {qualityMonths.includes(idx) && selectedDestinations.length > 0 && (
+                            <span 
+                              className="absolute top-0 right-0 text-xs text-green-700"
+                              style={{ fontSize: '8px' }}
+                            >
+                              ★
+                            </span>
+                          )}
                         </th>
                       ))}
                     </tr>
