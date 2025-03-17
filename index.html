@@ -16,52 +16,52 @@
         html {
             font-size: 14px;
         }
-        
+
         /* Compact table and buttons */
         button {
             padding: 0.25rem 0.5rem !important;
         }
-        
+
         th, td {
             padding: 0.35rem 0.5rem !important;
         }
-        
+
         /* Highlight selected month columns */
         .month-selected {
             border-left: 2px solid #1E40AF !important;
             border-right: 2px solid #1E40AF !important;
         }
-        
+
         th.month-selected {
             border-top: 2px solid #1E40AF !important;
         }
-        
+
         tr:last-child td.month-selected {
             border-bottom: 2px solid #1E40AF !important;
         }
-        
+
         /* Container sizing */
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 12px;
         }
-        
+
         /* Reduce spacing */
         .compact-spacing {
             margin-top: 0.5rem !important;
             margin-bottom: 0.5rem !important;
         }
-        
+
         /* More compact notes */
         .notes-grid {
             grid-gap: 0.5rem !important;
         }
-        
+
         .note-card {
             padding: 0.5rem !important;
         }
-        
+
         /* Destination filter dropdown */
         .destination-filter {
             max-height: 100px;
@@ -108,8 +108,8 @@
 
           // Define months
           const months = [
-            "January", "February", "March", "April", 
-            "May", "June", "July", "August", 
+            "January", "February", "March", "April",
+            "May", "June", "July", "August",
             "September", "October", "November", "December"
           ];
 
@@ -156,13 +156,12 @@
             3: "Poor",
             4: "Avoid"
           };
-          
+
           // State for filters
           const [selectedMonths, setSelectedMonths] = React.useState([]);
           const [selectedDestinations, setSelectedDestinations] = React.useState([]);
           const [qualityFilter, setQualityFilter] = React.useState("All");
           const [searchTerm, setSearchTerm] = React.useState("");
-          const [hideNonQualityMonths, setHideNonQualityMonths] = React.useState(false);
 
           // Function to toggle month selection
           const toggleMonth = (monthIndex) => {
@@ -172,7 +171,7 @@
               setSelectedMonths([...selectedMonths, monthIndex]);
             }
           };
-          
+
           // Function to toggle destination selection
           const toggleDestination = (destinationName) => {
             if (selectedDestinations.includes(destinationName)) {
@@ -199,23 +198,28 @@
             if (selectedDestinations.length > 0 && !selectedDestinations.includes(destinationName)) {
               return false;
             }
-            
-            // If no months are selected and no quality months to show, only apply destination filter
-            if (selectedMonths.length === 0 && !(selectedDestinations.length > 0 && qualityFilter !== "All" && hideNonQualityMonths)) {
+
+            // If no months are selected or if there are no common quality months,
+            // just show all selected destinations (don't filter by months)
+            if (selectedMonths.length === 0 ||
+                (selectedDestinations.length > 0 && qualityFilter !== "All" && qualityMonths.length === 0)) {
               return true;
             }
-            
+
             // Convert quality filter to numeric value
             const qualityValue = getQualityValue(qualityFilter);
-            
-            // Get months to check against - either selected months or quality months when hideNonQualityMonths is true
-            const monthsToCheck = (selectedDestinations.length > 0 && qualityFilter !== "All" && hideNonQualityMonths) 
+
+            // Get months to check against - either selected months or quality months
+            const monthsToCheck = (selectedDestinations.length > 0 && qualityFilter !== "All" && qualityMonths.length > 0)
               ? (selectedMonths.length > 0 ? selectedMonths.filter(m => qualityMonths.includes(m)) : qualityMonths)
               : selectedMonths;
-            
-            // If filtering by months but no valid months after intersection with quality months, return false
-            if (monthsToCheck.length === 0) return false;
-            
+
+            // If filtering by months but no valid months after intersection with quality months,
+            // still show the destination but with a warning
+            if (monthsToCheck.length === 0) {
+              return selectedDestinations.includes(destinationName);
+            }
+
             // Check if the destination has at least one selected month with quality equal to or better than the filter
             return monthsToCheck.some(monthIndex => {
               const value = seasonData[destinationName][monthIndex];
@@ -225,33 +229,33 @@
 
           // Filter destinations based on selected criteria
           const filteredDestinations = destinations.filter(dest => meetsCriteria(dest.name));
-          
+
           // Function to find the months where all selected destinations meet the quality criteria
           const findQualityMonths = () => {
             // If no destinations are selected, return all months
             if (selectedDestinations.length === 0) return [];
-            
+
             const qualityValue = getQualityValue(qualityFilter);
             const commonQualityMonths = [];
-            
+
             // For each month, check if all selected destinations meet the quality criteria
             for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
               const allDestinationsMeetQuality = selectedDestinations.every(destName => {
                 const value = seasonData[destName][monthIndex];
                 return value <= qualityValue;
               });
-              
+
               if (allDestinationsMeetQuality) {
                 commonQualityMonths.push(monthIndex);
               }
             }
-            
+
             return commonQualityMonths;
           };
-          
+
           // Get months where all selected destinations meet the quality criteria
           const qualityMonths = findQualityMonths();
-          
+
           // Filter destinations for the selector based on search term
           const filteredDestinationOptions = destinations
             .filter(dest => dest.name.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -259,7 +263,7 @@
           return (
             <div className="w-full p-4">
               <h1 className="text-xl font-bold mb-2">Brazil Travel Calendar: Best Times to Visit</h1>
-              
+
               {/* Filter controls */}
               <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                 <div className="mb-2">
@@ -273,7 +277,7 @@
                   />
                   <div className="destination-filter">
                     {filteredDestinationOptions.map((destination) => (
-                      <div 
+                      <div
                         key={destination.name}
                         className="flex items-center hover:bg-gray-100 p-1"
                       >
@@ -284,7 +288,7 @@
                           onChange={() => toggleDestination(destination.name)}
                           className="mr-2"
                         />
-                        <label 
+                        <label
                           htmlFor={`destination-${destination.name}`}
                           className="flex-1 cursor-pointer text-sm"
                         >
@@ -308,7 +312,7 @@
                     </button>
                   </div>
                 </div>
-                
+
                 <div className="mb-2">
                   <h3 className="font-bold mb-1">Filter by month:</h3>
                   <div className="flex flex-wrap gap-1">
@@ -317,8 +321,8 @@
                         key={month}
                         onClick={() => toggleMonth(idx)}
                         className={`rounded text-sm ${
-                          selectedMonths.includes(idx) 
-                            ? 'bg-blue-600 text-white' 
+                          selectedMonths.includes(idx)
+                            ? 'bg-blue-600 text-white'
                             : 'bg-gray-200 text-gray-800'
                         }`}
                       >
@@ -327,7 +331,7 @@
                     ))}
                   </div>
                 </div>
-                
+
                 <div className="mb-2">
                   <h3 className="font-bold mb-1">Show destinations rated at least:</h3>
                   <div className="flex gap-2">
@@ -345,7 +349,6 @@
                       </button>
                     ))}
                   </div>
-                  
                   {selectedDestinations.length > 0 && qualityFilter !== "All" && (
                     <div className="mt-2 p-2 bg-blue-50 rounded">
                       <p className="text-xs font-medium">
@@ -354,44 +357,36 @@
                             <span className="text-green-700">✓</span> All {selectedDestinations.length} selected destinations are rated at least "{qualityFilter}" during:
                             <br/>
                             <span className="font-bold">{qualityMonths.map(idx => months[idx]).join(", ")}</span>
+                            <br/>
+                            <span className="text-xs text-gray-600">Only these months are now displayed in the table.</span>
                           </span>
                         ) : (
                           <span>
                             <span className="text-red-700">✗</span> There are no months when all selected destinations are rated "{qualityFilter}" or better together.
+                            <br/>
+                            <span className="text-xs text-gray-600">Showing all months since no common quality months exist.</span>
                           </span>
                         )}
                       </p>
-                      
-                      <div className="mt-2 flex items-center">
-                        <input 
-                          type="checkbox" 
-                          id="hide-non-quality-months" 
-                          checked={hideNonQualityMonths} 
-                          onChange={() => setHideNonQualityMonths(!hideNonQualityMonths)}
-                          className="mr-2"
-                        />
-                        <label htmlFor="hide-non-quality-months" className="text-xs cursor-pointer">
-                          Only show these months in the table
-                        </label>
-                      </div>
                     </div>
                   )}
                 </div>
-                
+
                 <div className="mt-2 text-xs">
                   {(selectedMonths.length > 0 || selectedDestinations.length > 0) ? (
                     <p>
-                      Showing {filteredDestinations.length} destinations 
+                      Showing {filteredDestinations.length} destinations
                       {selectedDestinations.length > 0 && ` (${selectedDestinations.length} selected)`}
-                      {selectedMonths.length > 0 && !hideNonQualityMonths && ` during ${selectedMonths.map(idx => months[idx]).join(", ")}`}
-                      {(selectedMonths.length > 0 || (hideNonQualityMonths && qualityMonths.length > 0)) && 
+                      {selectedMonths.length > 0 && !(selectedDestinations.length > 0 && qualityFilter !== "All" && qualityMonths.length > 0) &&
+                        ` during ${selectedMonths.map(idx => months[idx]).join(", ")}`}
+                      {(selectedMonths.length > 0 || (selectedDestinations.length > 0 && qualityFilter !== "All")) &&
                         ` that are rated ${qualityFilter !== "All" ? qualityFilter + " or better" : "any quality"}`}.
                     </p>
                   ) : (
                     <p>Select destinations and/or months to filter. Currently showing all destinations.</p>
                   )}
-                  
-                  {qualityMonths.length > 0 && selectedDestinations.length > 0 && !hideNonQualityMonths && (
+
+                  {qualityMonths.length > 0 && selectedDestinations.length > 0 && qualityMonths.length < 12 && (
                     <p className="mt-1 text-green-700">
                       <span className="text-xs">★</span> Months with green highlight are when all selected destinations have at least "{qualityFilter}" rating.
                     </p>
@@ -404,34 +399,38 @@
                   <thead>
                     <tr className="bg-gray-100">
                       <th className="px-4 py-2 border">
-                        Destination 
+                        Destination
                         <span className="text-xs ml-1 font-normal">
                           ({filteredDestinations.length}/{destinations.length})
                         </span>
                       </th>
                       {months.map((month, idx) => {
-                        // Skip months that don't meet quality criteria when hideNonQualityMonths is true
-                        if (selectedDestinations.length > 0 && qualityFilter !== "All" && hideNonQualityMonths && !qualityMonths.includes(idx)) {
+                        // Skip months that don't meet quality criteria when multiple destinations are selected
+                        // BUT only if there are months that actually meet the criteria
+                        if (selectedDestinations.length > 0 &&
+                            qualityFilter !== "All" &&
+                            qualityMonths.length > 0 &&
+                            !qualityMonths.includes(idx)) {
                           return null;
                         }
-                        
+
                         return (
-                          <th 
-                            key={month} 
+                          <th
+                            key={month}
                             className={`px-4 py-2 border text-center cursor-pointer ${
                               selectedMonths.includes(idx) ? 'bg-blue-100 month-selected' : ''
                             } ${
                               qualityMonths.includes(idx) && selectedDestinations.length > 0 ? 'bg-green-100' : ''
                             }`}
-                            style={{ 
+                            style={{
                               minWidth: '60px',
                               position: 'relative'
                             }}
                             onClick={() => toggleMonth(idx)}
                           >
                             {month}
-                            {qualityMonths.includes(idx) && selectedDestinations.length > 0 && !hideNonQualityMonths && (
-                              <span 
+                            {qualityMonths.includes(idx) && selectedDestinations.length > 0 && qualityMonths.length < 12 && (
+                              <span
                                 className="absolute top-0 right-0 text-xs text-green-700"
                                 style={{ fontSize: '8px' }}
                               >
@@ -449,7 +448,7 @@
                         <td className={`px-4 py-2 border font-medium ${
                           selectedDestinations.includes(destination.name) ? 'bg-green-50' : ''
                         }`}>
-                          <div 
+                          <div
                             onClick={() => toggleDestination(destination.name)}
                             style={{cursor: 'pointer'}}
                           >
@@ -460,19 +459,23 @@
                           </div>
                         </td>
                         {months.map((month, monthIndex) => {
-                          // Skip months that don't meet quality criteria when hideNonQualityMonths is true
-                          if (selectedDestinations.length > 0 && qualityFilter !== "All" && hideNonQualityMonths && !qualityMonths.includes(monthIndex)) {
+                          // Skip months that don't meet quality criteria when multiple destinations are selected
+                          // BUT only if there are months that actually meet the criteria
+                          if (selectedDestinations.length > 0 &&
+                              qualityFilter !== "All" &&
+                              qualityMonths.length > 0 &&
+                              !qualityMonths.includes(monthIndex)) {
                             return null;
                           }
-                          
+
                           const seasonValue = seasonData[destination.name][monthIndex];
                           return (
-                            <td 
-                              key={`${destination.name}-${month}`} 
+                            <td
+                              key={`${destination.name}-${month}`}
                               className={`px-2 py-2 border text-center cursor-pointer ${
                                 selectedMonths.includes(monthIndex) ? 'month-selected' : ''
                               }`}
-                              style={{ 
+                              style={{
                                 backgroundColor: seasonColors[seasonValue],
                                 color: seasonValue <= 2 ? "#000" : "#fff"
                               }}
@@ -487,14 +490,14 @@
                   </tbody>
                 </table>
               </div>
-              
+
               <div className="mt-3 mb-2 compact-spacing">
                 <h3 className="font-bold mb-1">Legend:</h3>
                 <div className="flex flex-wrap gap-3">
                   {[0, 1, 2, 3, 4].map(value => (
                     <div key={value} className="flex items-center">
-                      <div 
-                        className="w-3 h-3 mr-1" 
+                      <div
+                        className="w-3 h-3 mr-1"
                         style={{ backgroundColor: seasonColors[value] }}
                       ></div>
                       <span className="text-sm">{legendText[value]}</span>
@@ -502,7 +505,7 @@
                   ))}
                 </div>
               </div>
-              
+
               {/* Destination notes */}
               {filteredDestinations.length > 0 && (
                 <div className="mt-3 compact-spacing">
@@ -516,7 +519,7 @@
                   </div>
                 </div>
               )}
-              
+
               <div className="mt-3 text-xs text-gray-600 compact-spacing">
                 <p><strong>Weather considerations:</strong> Brazil is in the Southern Hemisphere, so seasons are opposite to the Northern Hemisphere. Summer is December-February, winter is June-August.</p>
                 <p><strong>Regional differences:</strong> Brazil spans multiple climate zones - tropical north, subtropical south, and semi-arid northeast each have unique patterns.</p>
