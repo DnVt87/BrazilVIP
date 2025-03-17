@@ -61,6 +61,14 @@
         .note-card {
             padding: 0.5rem !important;
         }
+        
+        /* Destination filter dropdown */
+        .destination-filter {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem;
+        }
     </style>
 </head>
 <body>
@@ -148,14 +156,12 @@
             3: "Poor",
             4: "Avoid"
           };
-
-          // Group regions for filter
-          const regions = [...new Set(destinations.map(d => d.region))].sort();
           
           // State for filters
           const [selectedMonths, setSelectedMonths] = React.useState([]);
-          const [selectedRegions, setSelectedRegions] = React.useState([]);
+          const [selectedDestinations, setSelectedDestinations] = React.useState([]);
           const [qualityFilter, setQualityFilter] = React.useState("All");
+          const [searchTerm, setSearchTerm] = React.useState("");
 
           // Function to toggle month selection
           const toggleMonth = (monthIndex) => {
@@ -166,12 +172,12 @@
             }
           };
           
-          // Function to toggle region selection
-          const toggleRegion = (region) => {
-            if (selectedRegions.includes(region)) {
-              setSelectedRegions(selectedRegions.filter(r => r !== region));
+          // Function to toggle destination selection
+          const toggleDestination = (destinationName) => {
+            if (selectedDestinations.includes(destinationName)) {
+              setSelectedDestinations(selectedDestinations.filter(d => d !== destinationName));
             } else {
-              setSelectedRegions([...selectedRegions, region]);
+              setSelectedDestinations([...selectedDestinations, destinationName]);
             }
           };
 
@@ -188,14 +194,12 @@
 
           // Function to check if a destination meets the filter criteria
           const meetsCriteria = (destinationName) => {
-            const destination = destinations.find(d => d.name === destinationName);
-            
-            // Check region filter
-            if (selectedRegions.length > 0 && !selectedRegions.includes(destination.region)) {
+            // Check destination filter
+            if (selectedDestinations.length > 0 && !selectedDestinations.includes(destinationName)) {
               return false;
             }
             
-            // If no months are selected, only apply region filter
+            // If no months are selected, only apply destination filter
             if (selectedMonths.length === 0) return true;
             
             // Convert quality filter to numeric value
@@ -210,6 +214,10 @@
 
           // Filter destinations based on selected criteria
           const filteredDestinations = destinations.filter(dest => meetsCriteria(dest.name));
+          
+          // Filter destinations for the selector based on search term
+          const filteredDestinationOptions = destinations
+            .filter(dest => dest.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
           return (
             <div className="w-full p-4">
@@ -218,21 +226,49 @@
               {/* Filter controls */}
               <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                 <div className="mb-2">
-                  <h3 className="font-bold mb-1">Filter by region:</h3>
-                  <div className="flex flex-wrap gap-1">
-                    {regions.map((region) => (
-                      <button
-                        key={region}
-                        onClick={() => toggleRegion(region)}
-                        className={`rounded text-sm ${
-                          selectedRegions.includes(region) 
-                            ? 'bg-green-600 text-white' 
-                            : 'bg-gray-200 text-gray-800'
-                        }`}
+                  <h3 className="font-bold mb-1">Filter by destination:</h3>
+                  <input
+                    type="text"
+                    placeholder="Search destinations..."
+                    className="w-full p-2 mb-2 border rounded"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  <div className="destination-filter">
+                    {filteredDestinationOptions.map((destination) => (
+                      <div 
+                        key={destination.name}
+                        className="flex items-center hover:bg-gray-100 p-1"
                       >
-                        {region}
-                      </button>
+                        <input
+                          type="checkbox"
+                          id={`destination-${destination.name}`}
+                          checked={selectedDestinations.includes(destination.name)}
+                          onChange={() => toggleDestination(destination.name)}
+                          className="mr-2"
+                        />
+                        <label 
+                          htmlFor={`destination-${destination.name}`}
+                          className="flex-1 cursor-pointer text-sm"
+                        >
+                          {destination.name} <span className="text-xs text-gray-500">({destination.region})</span>
+                        </label>
+                      </div>
                     ))}
+                  </div>
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      onClick={() => setSelectedDestinations(destinations.map(d => d.name))}
+                      className="bg-blue-600 text-white rounded text-xs py-1 px-2"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      onClick={() => setSelectedDestinations([])}
+                      className="bg-gray-200 text-gray-800 rounded text-xs py-1 px-2"
+                    >
+                      Clear
+                    </button>
                   </div>
                 </div>
                 
@@ -275,15 +311,15 @@
                 </div>
                 
                 <div className="mt-2 text-xs">
-                  {(selectedMonths.length > 0 || selectedRegions.length > 0) ? (
+                  {(selectedMonths.length > 0 || selectedDestinations.length > 0) ? (
                     <p>
                       Showing {filteredDestinations.length} destinations 
-                      {selectedRegions.length > 0 && ` in ${selectedRegions.join(", ")}`}
+                      {selectedDestinations.length > 0 && ` (${selectedDestinations.length} selected)`}
                       {selectedMonths.length > 0 && ` during ${selectedMonths.map(idx => months[idx]).join(", ")}`}
                       {selectedMonths.length > 0 && ` that are rated ${qualityFilter !== "All" ? qualityFilter + " or better" : "any quality"}`}.
                     </p>
                   ) : (
-                    <p>Select regions and/or months to filter destinations. Currently showing all destinations.</p>
+                    <p>Select destinations and/or months to filter. Currently showing all destinations.</p>
                   )}
                 </div>
               </div>
@@ -316,18 +352,15 @@
                     {filteredDestinations.map((destination, index) => (
                       <tr key={destination.name} className={index % 2 === 0 ? "bg-gray-50" : ""}>
                         <td className={`px-4 py-2 border font-medium ${
-                          selectedRegions.includes(destination.region) ? 'bg-green-50' : ''
+                          selectedDestinations.includes(destination.name) ? 'bg-green-50' : ''
                         }`}>
-                          <div>{destination.name}</div>
                           <div 
-                            className={`text-xs ${
-                              selectedRegions.includes(destination.region) 
-                                ? 'text-green-700 font-medium' 
-                                : 'text-gray-500'
-                            }`}
-                            onClick={() => toggleRegion(destination.region)}
+                            onClick={() => toggleDestination(destination.name)}
                             style={{cursor: 'pointer'}}
                           >
+                            {destination.name}
+                          </div>
+                          <div className="text-xs text-gray-500">
                             {destination.region}
                           </div>
                         </td>
